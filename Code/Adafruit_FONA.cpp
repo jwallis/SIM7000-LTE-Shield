@@ -648,9 +648,6 @@ boolean Adafruit_FONA::setSMSInterrupt(uint8_t i) {
 int8_t Adafruit_FONA::getNumSMS(void) {
   uint16_t numsms;
 
-  // get into text mode
-  if (! sendCheckReply(F("AT+CMGF=1"), ok_reply)) return -1;
-
   // ask how many sms are stored
   if (sendParseReply(F("AT+CPMS?"), F(FONA_PREF_SMS_STORAGE ","), &numsms)) 
     return numsms;
@@ -1646,8 +1643,6 @@ void Adafruit_FONA::setNetworkSettings(FONAFlashStringPtr apn,
   this->apn = apn;
   this->apnusername = username;
   this->apnpassword = password;
-
-  if (_type >= SIM7000A) sendCheckReplyQuoted(F("AT+CGDCONT=1,\"IP\","), apn, ok_reply, 10000);
 }
 
 boolean Adafruit_FONA::getGSMLoc(uint16_t *errorcode, char *buff, uint16_t maxlen) {
@@ -2500,6 +2495,27 @@ boolean Adafruit_FONA_LTE::MQTT_dataFormatHex(bool yesno) {
 
 /********* TCP FUNCTIONS  ************************************/
 
+boolean Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, char *packet, uint8_t len) {
+  bool success = false;
+
+  TCPshut();
+  delay(2000);
+
+  while (true) {
+    if (! sendCheckReplyQuoted(F("AT+CSTT="), apn, ok_reply) ) break;
+    if (! TCPconnect(server, port)) break;
+    if (! TCPsend(packet, len)) break;
+    // TCPSend() handles the "SEND OK" part, but we need to verify it's SUCCESSFUL, ie. "00"
+    // This is what makes this Hologram-specific
+    if (! expectReply(F("00"), 60000)) break;  
+
+    success = true;
+    break;
+  }
+
+  TCPshut();
+  return success;
+}
 
 boolean Adafruit_FONA::TCPconnect(char *server, uint16_t port) {
   flushInput();
@@ -2510,8 +2526,10 @@ boolean Adafruit_FONA::TCPconnect(char *server, uint16_t port) {
   // single connection at a time
   if (! sendCheckReply(F("AT+CIPMUX=0"), ok_reply) ) return false;
 
-  // manually read data
-  if (! sendCheckReply(F("AT+CIPRXGET=1"), ok_reply) ) return false;
+  // DO NOT manually read data - this is a change from the AdaFruit and Botletics libraries
+  // This is done so that after sending with TCPsend(), we will be returned all the responses and response codes.
+  // This is necessary for verifying from Hologram not just SEND OK, but the true success/fail message (success is "00")
+  if (! sendCheckReply(F("AT+CIPRXGET=0"), ok_reply) ) return false;
 
 
   DEBUG_PRINT(F("AT+CIPSTART=\"TCP\",\""));
@@ -2538,6 +2556,11 @@ boolean Adafruit_FONA::TCPclose(void) {
   return sendCheckReply(F("AT+CIPCLOSE"), F("CLOSE OK"));
 }
 
+boolean Adafruit_FONA::TCPshut(void) {
+  TCPclose();
+  return sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"));
+}
+
 boolean Adafruit_FONA::TCPconnected(void) {
   if (! sendCheckReply(F("AT+CIPSTATUS"), ok_reply, 100) ) return false;
   readline(100);
@@ -2551,6 +2574,7 @@ boolean Adafruit_FONA::TCPsend(char *packet, uint8_t len) {
 
   DEBUG_PRINT(F("AT+CIPSEND="));
   DEBUG_PRINTLN(len);
+  DEBUG_PRINTLN(packet);
 #ifdef ADAFRUIT_FONA_DEBUG
   for (uint16_t i=0; i<len; i++) {
   DEBUG_PRINT(F(" 0x"));
@@ -2569,12 +2593,9 @@ boolean Adafruit_FONA::TCPsend(char *packet, uint8_t len) {
   if (replybuffer[0] != '>') return false;
 
   mySerial->write(packet, len);
-  readline(3000); // wait up to 3 seconds to send the data
 
-  DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-
-
-  return (strcmp(replybuffer, "SEND OK") == 0);
+  if (! expectReply(F("SEND OK"), 60000)) return false;
+  return true;
 }
 
 uint16_t Adafruit_FONA::TCPavailable(void) {
