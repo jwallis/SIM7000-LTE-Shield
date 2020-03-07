@@ -136,6 +136,7 @@ class Adafruit_FONA : public FONAStreamType {
   // SMS handling
   boolean setSMSInterrupt(uint8_t i);
   uint8_t getSMSInterrupt(void);
+  void setEchoOff(void);
   int8_t getNumSMS(void);
   boolean readSMS(uint8_t i, char *smsbuff, uint16_t max, uint16_t *readsize);
   boolean sendSMS(const char *smsaddr, const char *smsmsg);
@@ -172,7 +173,7 @@ class Adafruit_FONA : public FONAStreamType {
   boolean enableGPSNMEA(uint8_t nmea);
 
   // TCP raw connections
-  boolean ConnectAndSendToHologram(char *server, uint16_t port, char *packet, uint8_t len);
+  uint16_t ConnectAndSendToHologram(char *server, uint16_t port, char *packet, uint16_t len);
   boolean TCPconnect(char *server, uint16_t port);
   boolean TCPclose(void);
   boolean TCPshut(void);

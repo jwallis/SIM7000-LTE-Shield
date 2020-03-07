@@ -79,9 +79,7 @@ boolean Adafruit_FONA::begin(Stream &port) {
     delay(100);
   }
 
-  // turn off Echo!
-  sendCheckReply(F("ATE0"), ok_reply);
-  delay(100);
+  setEchoOff();
 
   if (! sendCheckReply(F("ATE0"), ok_reply)) {
     return false;
@@ -643,6 +641,11 @@ uint8_t Adafruit_FONA::getSMSInterrupt(void) {
 
 boolean Adafruit_FONA::setSMSInterrupt(uint8_t i) {
   return sendCheckReply(F("AT+CFGRI="), i, ok_reply);
+}
+
+void Adafruit_FONA::setEchoOff(void) {
+  sendCheckReply(F("ATE0"), ok_reply);
+  delay(100);
 }
 
 int8_t Adafruit_FONA::getNumSMS(void) {
@@ -2495,8 +2498,10 @@ boolean Adafruit_FONA_LTE::MQTT_dataFormatHex(bool yesno) {
 
 /********* TCP FUNCTIONS  ************************************/
 
-boolean Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, char *packet, uint8_t len) {
-  bool success = false;
+uint16_t Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, char *packet, uint16_t len){
+  char responseChar;
+  uint16_t successCode = 10;
+  uint8_t replyidx = 0;
 
   TCPshut();
   delay(2000);
@@ -2505,16 +2510,21 @@ boolean Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, cha
     if (! sendCheckReplyQuoted(F("AT+CSTT="), apn, ok_reply) ) break;
     if (! TCPconnect(server, port)) break;
     if (! TCPsend(packet, len)) break;
-    // TCPSend() handles the "SEND OK" part, but we need to verify it's SUCCESSFUL, ie. "00"
-    // This is what makes this Hologram-specific
-    if (! expectReply(F("00"), 60000)) break;  
 
-    success = true;
+    // TCPSend() handles the "SEND OK" part, but we need to verify it's SUCCESSFUL, ie. "00"
+    // This is what makes this Hologram-specific, see https://hologram.io/docs/reference/cloud/embedded/
+    replyidx = readline(60000);
+    responseChar = replybuffer[0];
+    if (replyidx == 0) break;
+
+    DEBUG_PRINT(F("successCode: ")); DEBUG_PRINTLN(responseChar);
+
+    successCode = atoi(&responseChar);
     break;
   }
 
   TCPshut();
-  return success;
+  return successCode;
 }
 
 boolean Adafruit_FONA::TCPconnect(char *server, uint16_t port) {
@@ -2531,7 +2541,7 @@ boolean Adafruit_FONA::TCPconnect(char *server, uint16_t port) {
   // This is necessary for verifying from Hologram not just SEND OK, but the true success/fail message (success is "00")
   if (! sendCheckReply(F("AT+CIPRXGET=0"), ok_reply) ) return false;
 
-
+  //example: AT+CIPSTART="TCP","cloudsocket.hologram.io","9999"
   DEBUG_PRINT(F("AT+CIPSTART=\"TCP\",\""));
   DEBUG_PRINT(server);
   DEBUG_PRINT(F("\",\""));
