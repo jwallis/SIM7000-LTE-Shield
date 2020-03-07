@@ -1646,6 +1646,8 @@ void Adafruit_FONA::setNetworkSettings(FONAFlashStringPtr apn,
   this->apn = apn;
   this->apnusername = username;
   this->apnpassword = password;
+
+  sendCheckReplyQuoted(F("AT+CGDCONT=1,\"IP\","), apn, ok_reply, 10000);
 }
 
 boolean Adafruit_FONA::getGSMLoc(uint16_t *errorcode, char *buff, uint16_t maxlen) {
