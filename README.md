@@ -1,4 +1,4 @@
-## My fork
+## jwallis's fork
 I have forked botletics/SIM7000-LTE-Shield because I will use this code in my project.  My project requires additional functionality and a very small number of changes that I do not expect botletics wants in their library.
 
 ## Overview
