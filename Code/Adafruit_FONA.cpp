@@ -795,6 +795,13 @@ boolean Adafruit_FONA::deleteSMS(uint8_t i) {
   return sendCheckReply(sendbuff, ok_reply, 2000);
 }
 
+boolean Adafruit_FONA::deleteAllSMS() {
+  if (! sendCheckReply(F("AT+CMGF=1"), ok_reply)) return false;
+
+  char sendbuff[12] = "AT+CMGD=0,4";
+  return sendCheckReply(sendbuff, ok_reply, 2000);
+}
+
 /********* USSD *********************************************************/
 
 boolean Adafruit_FONA::sendUSSD(char *ussdmsg, char *ussdbuff, uint16_t maxlen, uint16_t *readlen) {
@@ -2509,6 +2516,7 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, ch
   delay(2000);
 
   while (true) {
+    // AT+CSTT="hologram"
     if (! sendCheckReplyQuoted(F("AT+CSTT="), apn, ok_reply) ) break;
     if (! TCPconnect(server, port)) break;
     if (! TCPsend(packet, len)) break;
