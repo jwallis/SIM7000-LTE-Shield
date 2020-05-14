@@ -84,6 +84,7 @@ class Adafruit_FONA : public FONAStreamType {
  public:
   Adafruit_FONA(int8_t);
   boolean begin(FONAStreamType &port);
+  boolean beginSIM7000(FONAStreamType &port);
   uint8_t type();
 
   // Stream
@@ -113,6 +114,7 @@ class Adafruit_FONA : public FONAStreamType {
   uint8_t unlockSIM(char *pin);
   uint8_t getSIMCCID(char *ccid);
   uint8_t getNetworkStatus(void);
+  uint8_t getNetworkStatusSIM7000(void);
   uint8_t getRSSI(void);
 
   // IMEI
@@ -166,7 +168,9 @@ class Adafruit_FONA : public FONAStreamType {
 
   // GPS handling
   boolean enableGPS(boolean onoff);
+  boolean enableGPSSIM7000(boolean onoff);
   int8_t GPSstatus(void);
+  int8_t GPSstatusSIM7000(void);
   uint8_t getGPS(uint8_t arg, char *buffer, uint8_t maxbuff);
   // boolean getGPS(float *lat, float *lon, float *speed_kph=0, float *heading=0, float *altitude=0);
   boolean getGPS(float *lat, float *lon, float *speed_kph, float *heading, float *altitude,

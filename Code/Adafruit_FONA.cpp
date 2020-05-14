@@ -155,6 +155,63 @@ boolean Adafruit_FONA::begin(Stream &port) {
   return true;
 }
 
+boolean Adafruit_FONA::beginSIM7000(Stream &port) {
+  mySerial = &port;
+
+  if (_rstpin != 99) { // Pulse the reset pin only if it's not an LTE module
+    DEBUG_PRINTLN(F("Resetting the module..."));
+    pinMode(_rstpin, OUTPUT);
+    digitalWrite(_rstpin, HIGH);
+    delay(10);
+    digitalWrite(_rstpin, LOW);
+    delay(100);
+    digitalWrite(_rstpin, HIGH);
+  }
+
+  DEBUG_PRINTLN(F("Attempting to open comm with ATs"));
+  // give 7 seconds to reboot
+  int16_t timeout = 7000;
+
+  while (timeout > 0) {
+    while (mySerial->available()) mySerial->read();
+    if (sendCheckReply(F("AT"), ok_reply))
+      break;
+    while (mySerial->available()) mySerial->read();
+    if (sendCheckReply(F("AT"), F("AT"))) 
+      break;
+    delay(500);
+    timeout-=500;
+  }
+
+  if (timeout <= 0) {
+#ifdef ADAFRUIT_FONA_DEBUG
+    DEBUG_PRINTLN(F("Timeout: No response to AT... last ditch attempt."));
+#endif
+    sendCheckReply(F("AT"), ok_reply);
+    delay(100);
+    sendCheckReply(F("AT"), ok_reply);
+    delay(100);
+    sendCheckReply(F("AT"), ok_reply);
+    delay(100);
+  }
+
+  setEchoOff();
+
+  // turn on hangupitude
+  if (_rstpin != 99) sendCheckReply(F("AT+CVHU=0"), ok_reply);
+
+  delay(100);
+  flushInput();
+
+  _type = SIM7000A;
+
+#if defined(FONA_PREF_SMS_STORAGE)
+    sendCheckReply(F("AT+CPMS=" FONA_PREF_SMS_STORAGE "," FONA_PREF_SMS_STORAGE "," FONA_PREF_SMS_STORAGE), ok_reply);
+#endif
+
+  return true;
+}
+
 
 /********* Serial port ********************************************/
 boolean Adafruit_FONA::setBaudrate(uint16_t baud) {
@@ -400,6 +457,14 @@ uint8_t Adafruit_FONA::getNetworkStatus(void) {
   else {
     if (! sendParseReply(F("AT+CREG?"), F("+CREG: "), &status, ',', 1)) return 0;
   }
+
+  return status;
+}
+
+uint8_t Adafruit_FONA::getNetworkStatusSIM7000(void) {
+  uint16_t status;
+
+  if (! sendParseReply(F("AT+CGREG?"), F("+CGREG: "), &status, ',', 1)) return 0;
 
   return status;
 }
@@ -971,6 +1036,24 @@ boolean Adafruit_FONA::enableGPS(boolean onoff) {
   return true;
 }
 
+boolean Adafruit_FONA::enableGPSSIM7000(boolean onoff) {
+  uint16_t state;
+
+  // First check if its already on or off
+
+  if (! sendParseReply(F("AT+CGNSPWR?"), F("+CGNSPWR: "), &state) )
+    return false;
+
+  if (onoff && !state) {
+    if (! sendCheckReply(F("AT+CGNSPWR=1"), ok_reply))
+      return false;
+  } else if (!onoff && state) {
+    if (! sendCheckReply(F("AT+CGNSPWR=0"), ok_reply))
+      return false;
+  }
+  return true;
+}
+
 /*
 boolean Adafruit_FONA_3G::enableGPS(boolean onoff) {
   uint16_t state;
@@ -1033,6 +1116,24 @@ int8_t Adafruit_FONA::GPSstatus(void) {
   }
   // else
   return 0;
+}
+
+int8_t Adafruit_FONA::GPSstatusSIM7000(void) {
+  // 808 V2 uses GNS commands and doesn't have an explicit 2D/3D fix status.
+  // Instead just look for a fix and if found assume it's a 3D fix.
+  getReply(F("AT+CGNSINF"));
+  char *p = prog_char_strstr(replybuffer, (prog_char*)F("+CGNSINF: "));
+  if (p == 0) return -1;
+  p+=10;
+  readline(); // eat 'OK'
+  if (p[0] == '0') return 0; // GPS is not even on!
+
+  p+=2; // Skip to second value, fix status.
+  //DEBUG_PRINTLN(p);
+  // Assume if the fix status is '1' then we have a 3D fix, otherwise no fix.
+  if (p[0] == '1') return 3;
+  else return 1;
+
 }
 
 uint8_t Adafruit_FONA::getGPS(uint8_t arg, char *buffer, uint8_t maxbuff) {
