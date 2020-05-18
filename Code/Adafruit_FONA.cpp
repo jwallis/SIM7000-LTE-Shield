@@ -2617,8 +2617,6 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, ch
   delay(2000);
 
   while (true) {
-    // AT+CSTT="hologram"
-    if (! sendCheckReplyQuoted(F("AT+CSTT="), apn, ok_reply) ) break;
     if (! TCPconnect(server, port)) break;
     if (! TCPsend(packet, len)) break;
 
@@ -2640,6 +2638,9 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, ch
 
 boolean Adafruit_FONA::TCPconnect(char *server, uint16_t port) {
   flushInput();
+
+  // AT+CSTT="hologram"
+  if (! sendCheckReplyQuoted(F("AT+CSTT="), apn, ok_reply) ) return;
 
   // close all old connections
   if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000) ) return false;
