@@ -923,7 +923,10 @@ boolean Adafruit_FONA::enableNTPTimeSync(boolean onoff, char* timeZone, char *bu
 
   if (onoff) {
     sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"));
-    sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"APN\","), apn, ok_reply, 10000);
+
+    if (! sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"APN\","), apn, ok_reply, 10000))
+      return false;
+
     sendCheckReply(F("AT+SAPBR=1,1"), ok_reply, 10000);
     sendCheckReply(F("AT+CNTPCID=1"), ok_reply);
     sendCheckReply(F("AT+CNTP=\"pool.ntp.org\","), timeZone, ok_reply, 10000);
