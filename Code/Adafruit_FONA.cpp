@@ -43,7 +43,7 @@ boolean Adafruit_FONA::begin(Stream &port) {
   mySerial = &port;
 
   if (_rstpin != 99) { // Pulse the reset pin only if it's not an LTE module
-  	DEBUG_PRINTLN(F("Resetting the module..."));
+    DEBUG_PRINTLN(F("Resetting the module..."));
     pinMode(_rstpin, OUTPUT);
     digitalWrite(_rstpin, HIGH);
     delay(10);
@@ -918,35 +918,36 @@ boolean Adafruit_FONA::enableNetworkTimeSync(boolean onoff) {
 }
 */
 
-boolean Adafruit_FONA::enableNTPTimeSync(boolean onoff, FONAFlashStringPtr ntpserver) {
-  if (onoff) {
-    if (! sendCheckReply(F("AT+CNTPCID=1"), ok_reply))
-      return false;
+boolean Adafruit_FONA::enableNTPTimeSync(boolean onoff, char* timeZone, char *buff, uint16_t maxlen) {
+  bool success = true;
 
-    mySerial->print(F("AT+CNTP=\""));
-    if (ntpserver != 0) {
-      mySerial->print(ntpserver);
-    } else {
-      mySerial->print(F("pool.ntp.org"));
-    }
-    mySerial->println(F("\",0"));
-    readline(FONA_DEFAULT_TIMEOUT_MS);
-    if (strcmp(replybuffer, "OK") != 0)
-      return false;
+  if (onoff) {
+    sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"));
+    sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"APN\","), apn, ok_reply, 10000);
+    sendCheckReply(F("AT+SAPBR=1,1"), ok_reply, 10000);
+    sendCheckReply(F("AT+CNTPCID=1"), ok_reply);
+    sendCheckReply(F("AT+CNTP=\"pool.ntp.org\","), timeZone, ok_reply, 10000);
 
     if (! sendCheckReply(F("AT+CNTP"), ok_reply, 10000))
+      success = false;
+
+    readline(10000);
+
+    if (strncmp(replybuffer, "+CNTP: ", 7) != 0)
       return false;
 
-    uint16_t status;
-    readline(10000);
-    if (! parseReply(F("+CNTP:"), &status))
-      return false;
+    char *p = replybuffer+9;
+    uint16_t lentocopy = min(maxlen-1, (int)strlen(p));
+    strncpy(buff, p, lentocopy+1);
+    buff[lentocopy] = 0;
+
+    sendCheckReply(F("AT+SAPBR=0,1"), ok_reply, 10000);
   } else {
     if (! sendCheckReply(F("AT+CNTPCID=0"), ok_reply))
-      return false;
+      success = false;
   }
 
-  return true;
+  return success;
 }
 
 boolean Adafruit_FONA::getTime(char *buff, uint16_t maxlen) {
@@ -994,8 +995,8 @@ boolean Adafruit_FONA::enableGPS(boolean onoff) {
     if (! sendParseReply(F("AT+CGNSPWR?"), F("+CGNSPWR: "), &state) )
       return false;
   } else if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500A || _type == SIM7500E || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-  	if (! Adafruit_FONA::sendParseReply(F("AT+CGPS?"), F("+CGPS: "), &state) )
-    	return false;
+    if (! Adafruit_FONA::sendParseReply(F("AT+CGPS?"), F("+CGPS: "), &state) )
+      return false;
   } else {
     if (! sendParseReply(F("AT+CGPSPWR?"), F("+CGPSPWR: "), &state))
       return false;
@@ -1004,26 +1005,26 @@ boolean Adafruit_FONA::enableGPS(boolean onoff) {
   if (onoff && !state) {
     if (_type == SIM808_V2 || _type == SIM7000A || _type == SIM7000C || _type == SIM7000E || _type == SIM7000G) {
       if (! sendCheckReply(F("AT+CGNSPWR=1"), ok_reply))
-				return false;
+        return false;
     } else if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500A || _type == SIM7500E || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-  		if (! sendCheckReply(F("AT+CGPS=1"), ok_reply))
-      	return false;
+      if (! sendCheckReply(F("AT+CGPS=1"), ok_reply))
+        return false;
     } else {
       if (! sendCheckReply(F("AT+CGPSPWR=1"), ok_reply))
-				return false;
+        return false;
     }
   } else if (!onoff && state) {
     if (_type == SIM808_V2 || _type == SIM7000A || _type == SIM7000C || _type == SIM7000E || _type == SIM7000G) {
       if (! sendCheckReply(F("AT+CGNSPWR=0"), ok_reply))
-				return false;
-		} else if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500A || _type == SIM7500E || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-			if (! sendCheckReply(F("AT+CGPS=0"), ok_reply))
-	      return false;
-		    // this takes a little time
-		    readline(2000); // eat '+CGPS: 0'
+        return false;
+    } else if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500A || _type == SIM7500E || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
+      if (! sendCheckReply(F("AT+CGPS=0"), ok_reply))
+        return false;
+        // this takes a little time
+        readline(2000); // eat '+CGPS: 0'
     } else {
       if (! sendCheckReply(F("AT+CGPSPWR=0"), ok_reply))
-				return false;
+        return false;
     }
   }
   return true;
