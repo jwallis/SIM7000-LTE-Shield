@@ -158,16 +158,6 @@ boolean Adafruit_FONA::begin(Stream &port) {
 boolean Adafruit_FONA::beginSIM7000(Stream &port) {
   mySerial = &port;
 
-  if (_rstpin != 99) { // Pulse the reset pin only if it's not an LTE module
-    DEBUG_PRINTLN(F("Resetting the module..."));
-    pinMode(_rstpin, OUTPUT);
-    digitalWrite(_rstpin, HIGH);
-    delay(10);
-    digitalWrite(_rstpin, LOW);
-    delay(100);
-    digitalWrite(_rstpin, HIGH);
-  }
-
   DEBUG_PRINTLN(F("Attempting to open comm with ATs"));
   // give 7 seconds to reboot
   int16_t timeout = 7000;
@@ -197,18 +187,12 @@ boolean Adafruit_FONA::beginSIM7000(Stream &port) {
 
   setEchoOff();
 
-  // turn on hangupitude
-  if (_rstpin != 99) sendCheckReply(F("AT+CVHU=0"), ok_reply);
-
   delay(100);
   flushInput();
 
   _type = SIM7000A;
 
-#if defined(FONA_PREF_SMS_STORAGE)
-    sendCheckReply(F("AT+CPMS=" FONA_PREF_SMS_STORAGE "," FONA_PREF_SMS_STORAGE "," FONA_PREF_SMS_STORAGE), ok_reply);
-#endif
-
+  sendCheckReply(F("AT+CPMS=\"SM\",\"SM\",\"SM\""), ok_reply);
   return true;
 }
 
@@ -726,6 +710,15 @@ int8_t Adafruit_FONA::getNumSMS(void) {
   return -1;
 }
 
+int8_t Adafruit_FONA::getNumSMSSIM7000(void) {
+  uint16_t numsms;
+
+  // ask how many sms are stored
+  if (sendParseReply(F("AT+CPMS?"), F("\"SM\","), &numsms))
+    return numsms;
+  return -1;
+}
+
 // Reading SMS's is a bit involved so we don't use helpers that may cause delays or debug
 // printouts!
 boolean Adafruit_FONA::readSMS(uint8_t i, char *smsbuff,
@@ -1037,21 +1030,10 @@ boolean Adafruit_FONA::enableGPS(boolean onoff) {
 }
 
 boolean Adafruit_FONA::enableGPSSIM7000(boolean onoff) {
-  uint16_t state;
-
-  // First check if its already on or off
-
-  if (! sendParseReply(F("AT+CGNSPWR?"), F("+CGNSPWR: "), &state) )
-    return false;
-
-  if (onoff && !state) {
-    if (! sendCheckReply(F("AT+CGNSPWR=1"), ok_reply))
-      return false;
-  } else if (!onoff && state) {
-    if (! sendCheckReply(F("AT+CGNSPWR=0"), ok_reply))
-      return false;
-  }
-  return true;
+  if (onoff)
+    return sendCheckReply(F("AT+CGNSPWR=1"), ok_reply);
+  else
+    return sendCheckReply(F("AT+CGNSPWR=0"), ok_reply);
 }
 
 /*
