@@ -152,6 +152,7 @@ class Adafruit_FONA : public FONAStreamType {
   // boolean enableNetworkTimeSync(boolean onoff);
   boolean enableNTPTimeSync(boolean onoff, char *timeZone, char *buff, uint16_t maxlen);
   boolean getTime(char *buff, uint16_t maxlen);
+  boolean setTime(char *timeStr);
   
   // RTC
   boolean enableRTC(uint8_t i);
@@ -264,7 +265,7 @@ class Adafruit_FONA : public FONAStreamType {
 
   void flushInput();
   uint16_t readRaw(uint16_t b);
-  uint8_t readline(uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS, boolean multiline = false);
+  uint8_t readline(long timeout = FONA_DEFAULT_TIMEOUT_MS, boolean multiline = false);
   uint8_t getReply(const char *send, uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS);
   uint8_t getReply(FONAFlashStringPtr send, uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS);
   uint8_t getReply(FONAFlashStringPtr prefix, char *suffix, uint16_t timeout = FONA_DEFAULT_TIMEOUT_MS);

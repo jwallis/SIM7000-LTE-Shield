@@ -803,6 +803,7 @@ boolean Adafruit_FONA::getSMSSender(uint8_t i, char *sender, int senderlen) {
 boolean Adafruit_FONA::sendSMS(const char *smsaddr, const char *smsmsg) {
   if (! sendCheckReply(F("AT+CMGF=1"), ok_reply)) return false;
 
+  // AT+CMGS="+15127775555"
   char sendcmd[30] = "AT+CMGS=\"";
   strncpy(sendcmd+9, smsaddr, 30-9-2);  // 9 bytes beginning, 2 bytes for close quote + null
   sendcmd[strlen(sendcmd)] = '\"';
@@ -824,7 +825,8 @@ boolean Adafruit_FONA::sendSMS(const char *smsaddr, const char *smsmsg) {
     readline(200);
     //DEBUG_PRINT("Line 2: "); DEBUG_PRINTLN(strlen(replybuffer));
   }
-  readline(10000); // read the +CMGS reply, wait up to 10 seconds!!!
+
+  readline(180000); // read the +CMGS reply, wait up to 10 seconds!!!
   //DEBUG_PRINT("Line 3: "); DEBUG_PRINTLN(strlen(replybuffer));
   if (strstr(replybuffer, "+CMGS") == 0) {
     return false;
@@ -929,6 +931,13 @@ boolean Adafruit_FONA::enableNTPTimeSync(boolean onoff, char* timeZone, char *bu
 
     sendCheckReply(F("AT+SAPBR=1,1"), ok_reply, 10000);
     sendCheckReply(F("AT+CNTPCID=1"), ok_reply);
+
+    // change "+08" -> "08" ... if there's a '-' it stays in.
+    if (timeZone[0] == '+') {
+      timeZone[0] = timeZone[1];
+      timeZone[1] = timeZone[2];
+      timeZone[2] = '\0';
+    }
     sendCheckReply(F("AT+CNTP=\"pool.ntp.org\","), timeZone, ok_reply, 10000);
 
     if (! sendCheckReply(F("AT+CNTP"), ok_reply, 10000))
@@ -964,6 +973,13 @@ boolean Adafruit_FONA::getTime(char *buff, uint16_t maxlen) {
   buff[lentocopy] = 0;
 
   readline(); // eat OK
+
+  return true;
+}
+
+boolean Adafruit_FONA::setTime(char *timeStr) {
+  if (! sendCheckReply(F("AT+CCLK="), timeStr, ok_reply, 5000))
+    return false;
 
   return true;
 }
@@ -2626,7 +2642,7 @@ boolean Adafruit_FONA::TCPconnect(char *server, uint16_t port) {
   flushInput();
 
   // AT+CSTT="hologram"
-  if (! sendCheckReplyQuoted(F("AT+CSTT="), apn, ok_reply) ) return;
+  if (! sendCheckReplyQuoted(F("AT+CSTT="), apn, ok_reply) ) return false;
 
   // close all old connections
   if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000) ) return false;
@@ -3042,7 +3058,7 @@ uint16_t Adafruit_FONA::readRaw(uint16_t b) {
   return idx;
 }
 
-uint8_t Adafruit_FONA::readline(uint16_t timeout, boolean multiline) {
+uint8_t Adafruit_FONA::readline(long timeout, boolean multiline) {
   uint16_t replyidx = 0;
 
   while (timeout--) {
