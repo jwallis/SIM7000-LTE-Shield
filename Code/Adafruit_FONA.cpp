@@ -812,8 +812,7 @@ boolean Adafruit_FONA::sendSMS(const char *smsaddr, const char *smsmsg) {
 
   DEBUG_PRINT(F("> ")); DEBUG_PRINTLN(smsmsg);
 
-  mySerial->println(smsmsg);
-  mySerial->println();
+  mySerial->print(smsmsg);
   mySerial->write(0x1A);
 
   DEBUG_PRINTLN("^Z");
