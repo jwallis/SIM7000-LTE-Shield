@@ -2615,7 +2615,6 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, ch
   uint8_t replyidx = 0;
 
   TCPshut();
-  delay(2000);
 
   while (true) {
     if (! TCPconnect(server, port)) break;
