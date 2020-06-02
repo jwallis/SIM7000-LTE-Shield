@@ -159,8 +159,8 @@ boolean Adafruit_FONA::beginSIM7000(Stream &port) {
   mySerial = &port;
 
   DEBUG_PRINTLN(F("Attempting to open comm with ATs"));
-  // give 7 seconds to reboot
-  int16_t timeout = 7000;
+  // give 10 seconds to reboot
+  int16_t timeout = 10000;
 
   while (timeout > 0) {
     while (mySerial->available()) mySerial->read();
