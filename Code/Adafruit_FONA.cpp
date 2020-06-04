@@ -800,7 +800,7 @@ boolean Adafruit_FONA::getSMSSender(uint8_t i, char *sender, int senderlen) {
   return result;
 }
 
-boolean Adafruit_FONA::sendSMS(const char *smsaddr, const char *smsmsg) {
+boolean Adafruit_FONA::sendSMSSIM7000(const char *smsaddr, const char *smsmsg) {
   if (! sendCheckReply(F("AT+CMGF=1"), ok_reply)) return false;
 
   // AT+CMGS="+15127775555"
@@ -817,15 +817,13 @@ boolean Adafruit_FONA::sendSMS(const char *smsaddr, const char *smsmsg) {
 
   DEBUG_PRINTLN("^Z");
 
-  if ( (_type == SIM5320A) || (_type == SIM5320E) || (_type >= SIM7000A) ) {
-    // Eat two sets of CRLF
-    readline(200);
-    //DEBUG_PRINT("Line 1: "); DEBUG_PRINTLN(strlen(replybuffer));
-    readline(200);
-    //DEBUG_PRINT("Line 2: "); DEBUG_PRINTLN(strlen(replybuffer));
-  }
+  // Eat two sets of CRLF
+  readline(200);
+  //DEBUG_PRINT("Line 1: "); DEBUG_PRINTLN(strlen(replybuffer));
+  readline(200);
+  //DEBUG_PRINT("Line 2: "); DEBUG_PRINTLN(strlen(replybuffer));
 
-  readline(180000); // read the +CMGS reply, wait up to 10 seconds!!!
+  readline(180000); // read the +CMGS reply, wait up to 3 minutes!!!
   //DEBUG_PRINT("Line 3: "); DEBUG_PRINTLN(strlen(replybuffer));
   if (strstr(replybuffer, "+CMGS") == 0) {
     return false;
@@ -1137,16 +1135,10 @@ int8_t Adafruit_FONA::GPSstatusSIM7000(void) {
 
 }
 
-uint8_t Adafruit_FONA::getGPS(uint8_t arg, char *buffer, uint8_t maxbuff) {
+uint8_t Adafruit_FONA::getGPSSIM7000(uint8_t arg, char *buffer, uint8_t maxbuff) {
   int32_t x = arg;
 
-  if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500A || _type == SIM7500E || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-    getReply(F("AT+CGPSINFO"));
-  } else if (_type == SIM808_V1) {
-    getReply(F("AT+CGPSINF="), x);
-  } else {
-    getReply(F("AT+CGNSINF"));
-  }
+  getReply(F("AT+CGNSINF"));
 
   char *p = prog_char_strstr(replybuffer, (prog_char*)F("SINF"));
   if (p == 0) {
@@ -1177,7 +1169,7 @@ boolean Adafruit_FONA::getGPS(float *lat, float *lon, float *speed_kph, float *h
   }
 	
   // grab the mode 2^5 gps csv from the sim808
-  uint8_t res_len = getGPS(32, gpsbuffer, 120);
+  uint8_t res_len = getGPSSIM7000(32, gpsbuffer, 120);
 
   // make sure we have a response
   if (res_len == 0)
@@ -1446,7 +1438,7 @@ boolean Adafruit_FONA::getGPS(float *lat, float *lon, float *speed_kph, float *h
       return false;
 
     // grab the mode 0 gps csv from the sim808
-    res_len = getGPS(0, gpsbuffer, 120);
+    res_len = getGPSSIM7000(0, gpsbuffer, 120);
 
     // make sure we have a response
     if (res_len == 0)
