@@ -180,8 +180,8 @@ class Adafruit_FONA : public FONAStreamType {
   boolean enableGPSNMEA(uint8_t nmea);
 
   // TCP raw connections
-  uint16_t ConnectAndSendToHologram(const char *server, uint16_t port, char *packet, uint16_t len);
-  boolean TCPconnect(const char *server, uint16_t port);
+  uint16_t ConnectAndSendToHologram(FONAFlashStringPtr server, uint16_t port, char *packet, uint16_t len);
+  boolean TCPconnect(FONAFlashStringPtr server, uint16_t port);
   boolean TCPclose(void);
   boolean TCPshut(void);
   boolean TCPconnected(void);
