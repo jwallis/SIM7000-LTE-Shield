@@ -2601,7 +2601,7 @@ boolean Adafruit_FONA_LTE::MQTT_dataFormatHex(bool yesno) {
 
 /********* TCP FUNCTIONS  ************************************/
 
-uint16_t Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, char *packet, uint16_t len){
+uint16_t Adafruit_FONA::ConnectAndSendToHologram(const char *server, uint16_t port, char *packet, uint16_t len){
   char responseChar;
   uint16_t successCode = 10;
   uint8_t replyidx = 0;
@@ -2628,7 +2628,7 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(char *server, uint16_t port, ch
   return successCode;
 }
 
-boolean Adafruit_FONA::TCPconnect(char *server, uint16_t port) {
+boolean Adafruit_FONA::TCPconnect(const char *server, uint16_t port) {
   flushInput();
 
   // AT+CSTT="hologram"
