@@ -35,6 +35,12 @@ Adafruit_FONA::Adafruit_FONA(int8_t rst)
   ok_reply = F("OK");
 }
 
+int Adafruit_FONA::freeRam(void) {
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+}
+
 uint8_t Adafruit_FONA::type(void) {
   return _type;
 }
@@ -158,7 +164,7 @@ boolean Adafruit_FONA::begin(Stream &port) {
 boolean Adafruit_FONA::beginSIM7000(Stream &port) {
   mySerial = &port;
 
-  DEBUG_PRINTLN(F("Attempting to open comm with ATs"));
+  DEBUG_PRINTLN(F("Begin"));
   // give 10 seconds to reboot
   int16_t timeout = 10000;
 
@@ -174,9 +180,6 @@ boolean Adafruit_FONA::beginSIM7000(Stream &port) {
   }
 
   if (timeout <= 0) {
-#ifdef ADAFRUIT_FONA_DEBUG
-    DEBUG_PRINTLN(F("Timeout: No response to AT... last ditch attempt."));
-#endif
     sendCheckReply(F("AT"), ok_reply);
     delay(100);
     sendCheckReply(F("AT"), ok_reply);
@@ -186,6 +189,10 @@ boolean Adafruit_FONA::beginSIM7000(Stream &port) {
   }
 
   setEchoOff();
+  
+  if (! sendCheckReply(F("ATE0"), ok_reply)) {
+    return false;
+  }
 
   delay(100);
   flushInput();
@@ -2603,7 +2610,7 @@ boolean Adafruit_FONA_LTE::MQTT_dataFormatHex(bool yesno) {
 
 uint16_t Adafruit_FONA::ConnectAndSendToHologram(FONAFlashStringPtr server, uint16_t port, char *packet, uint16_t len){
   char responseChar;
-  uint16_t successCode = 10;
+  uint8_t successCode = 10;
   uint8_t replyidx = 0;
 
   TCPshut();
@@ -2618,9 +2625,9 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(FONAFlashStringPtr server, uint
     responseChar = replybuffer[0];
     if (replyidx == 0) break;
 
-    DEBUG_PRINT(F("successCode: ")); DEBUG_PRINTLN(responseChar);
+    DEBUG_PRINTLN(replybuffer);
 
-    successCode = atoi(&responseChar);
+    successCode = responseChar - '0';
     break;
   }
 
@@ -2652,6 +2659,7 @@ boolean Adafruit_FONA::TCPconnect(FONAFlashStringPtr server, uint16_t port) {
   DEBUG_PRINT(port);
   DEBUG_PRINTLN(F("\""));
 
+  delay(1000);
 
   mySerial->print(F("AT+CIPSTART=\"TCP\",\""));
   mySerial->print(server);
@@ -2696,7 +2704,6 @@ boolean Adafruit_FONA::TCPsend(char *packet, uint8_t len) {
   }
 #endif
   DEBUG_PRINTLN();
-
 
   mySerial->print(F("AT+CIPSEND="));
   mySerial->println(len);

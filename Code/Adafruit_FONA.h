@@ -87,6 +87,8 @@ class Adafruit_FONA : public FONAStreamType {
   boolean beginSIM7000(FONAStreamType &port);
   uint8_t type();
 
+  int freeRam(void);
+
   // Stream
   int available(void);
   size_t write(uint8_t x);
