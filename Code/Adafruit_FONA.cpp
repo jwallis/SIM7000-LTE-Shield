@@ -736,6 +736,10 @@ boolean Adafruit_FONA::readSMS(uint8_t i, char *smsbuff,
   // show all text mode parameters
   if (! sendCheckReply(F("AT+CSDH=1"), ok_reply)) return false;
 
+  // Don't show Unsolicited Responses from incoming text messages. If this isn't set this way and the user sends 2 messages
+  // in a row, while responding to the first one with TCPsend(), we'd be expecting SEND OK but instead see CMTI: "SM",1
+  sendCheckReply(F("AT+CNMI=1,0,0,0,0"), ok_reply);
+
   // parse out the SMS len
   uint16_t thesmslen = 0;
 
