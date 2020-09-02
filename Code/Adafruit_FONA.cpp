@@ -2623,10 +2623,10 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(FONAFlashStringPtr server, uint
     if (! TCPconnect(server, port)) break;
     if (! TCPsend(packet, len)) break;
 
-    // TCPSend() handles the "SEND OK" part, but we need to verify it's SUCCESSFUL, ie. "00"
+    // TCPSend() handles the "SEND OK" part, but we need to verify it's SUCCESSFUL, ie. "[0,0]"
     // This is what makes this Hologram-specific, see https://hologram.io/docs/reference/cloud/embedded/
     replyidx = readline(60000);
-    responseChar = replybuffer[0];
+    responseChar = replybuffer[1];
     if (replyidx == 0) break;
 
     DEBUG_PRINTLN(replybuffer);
