@@ -1128,6 +1128,15 @@ int8_t Adafruit_FONA::GPSstatus(void) {
   return 0;
 }
 
+void Adafruit_FONA::executeATCommand(char *command, char *buffer, uint16_t maxbuff) {
+  // 65 seconds is the longest we can wait
+  getReply(command, 65535);
+
+  uint16_t len = min(maxbuff-1, (int)strlen(replybuffer));
+  strncpy(buffer, replybuffer, len);
+  buffer[len] = 0;
+}
+
 int8_t Adafruit_FONA::GPSstatusSIM7000(void) {
   // 808 V2 uses GNS commands and doesn't have an explicit 2D/3D fix status.
   // Instead just look for a fix and if found assume it's a 3D fix.
@@ -1146,7 +1155,7 @@ int8_t Adafruit_FONA::GPSstatusSIM7000(void) {
 
 }
 
-uint8_t Adafruit_FONA::getGPSSIM7000(uint8_t arg, char *buffer, uint8_t maxbuff) {
+uint16_t Adafruit_FONA::getGPSSIM7000(uint8_t arg, char *buffer, uint16_t maxbuff) {
   int32_t x = arg;
 
   getReply(F("AT+CGNSINF"));
@@ -1159,7 +1168,7 @@ uint8_t Adafruit_FONA::getGPSSIM7000(uint8_t arg, char *buffer, uint8_t maxbuff)
 
   p+=6;
 
-  uint8_t len = max(maxbuff-1, (int)strlen(p));
+  uint16_t len = min(maxbuff-1, (int)strlen(p));
   strncpy(buffer, p, len);
   buffer[len] = 0;
 
