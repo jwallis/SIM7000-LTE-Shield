@@ -176,7 +176,7 @@ class Adafruit_FONA : public FONAStreamType {
   boolean enableGPSSIM7000(boolean onoff);
   int8_t GPSstatus(void);
   int8_t GPSstatusSIM7000(void);
-  uint8_t getGPSSIM7000(uint8_t arg, char *buffer, uint16_t maxbuff);
+  uint16_t getGPSSIM7000(uint8_t arg, char *buffer, uint16_t maxbuff);
   // boolean getGPS(float *lat, float *lon, float *speed_kph=0, float *heading=0, float *altitude=0);
   boolean getGPS(float *lat, float *lon, float *speed_kph, float *heading, float *altitude,
                               uint16_t *year = NULL, uint8_t *month = NULL, uint8_t *day = NULL, uint8_t *hour = NULL, uint8_t *min = NULL, float *sec = NULL);
