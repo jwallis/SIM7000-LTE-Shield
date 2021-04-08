@@ -337,20 +337,7 @@ uint8_t Adafruit_FONA::getIMEI(char *imei) {
 uint8_t Adafruit_FONA::getNetworkStatus(void) {
   uint16_t status;
 
-  if (_type >= SIM7000A) {
-    if (! sendParseReply(F("AT+CGREG?"), F("+CGREG: "), &status, ',', 1)) return 0;
-  }
-  else {
-    if (! sendParseReply(F("AT+CREG?"), F("+CREG: "), &status, ',', 1)) return 0;
-  }
-
-  return status;
-}
-
-uint8_t Adafruit_FONA::getNetworkStatusSIM7000(void) {
-  uint16_t status;
-
-  if (! sendParseReply(F("AT+CGREG?"), F("+CGREG: "), &status, ',', 1)) return 0;
+  if (! sendParseReply(F("AT+CREG?"), F("+CREG: "), &status, ',', 1)) return 0;
 
   return status;
 }
@@ -907,78 +894,12 @@ boolean Adafruit_FONA::enableRTC(uint8_t i) {
 
 /********* GPS **********************************************************/
 
-
 boolean Adafruit_FONA::enableGPS(boolean onoff) {
-  uint16_t state;
-
-  // First check if its already on or off
-
-  if (_type == SIM808_V2 || SIM7000) {
-    if (! sendParseReply(F("AT+CGNSPWR?"), F("+CGNSPWR: "), &state) )
-      return false;
-  } else if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500 || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-    if (! Adafruit_FONA::sendParseReply(F("AT+CGPS?"), F("+CGPS: "), &state) )
-      return false;
-  } else {
-    if (! sendParseReply(F("AT+CGPSPWR?"), F("+CGPSPWR: "), &state))
-      return false;
-  }
-
-  if (onoff && !state) {
-    if (_type == SIM808_V2 || SIM7000) {
-      if (! sendCheckReply(F("AT+CGNSPWR=1"), ok_reply))
-        return false;
-    } else if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500 || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-      if (! sendCheckReply(F("AT+CGPS=1"), ok_reply))
-        return false;
-    } else {
-      if (! sendCheckReply(F("AT+CGPSPWR=1"), ok_reply))
-        return false;
-    }
-  } else if (!onoff && state) {
-    if (_type == SIM808_V2 || SIM7000) {
-      if (! sendCheckReply(F("AT+CGNSPWR=0"), ok_reply))
-        return false;
-    } else if (_type == SIM5320A || _type == SIM5320E || _type == SIM7500 || _type == SIM7600A || _type == SIM7600C || _type == SIM7600E) {
-      if (! sendCheckReply(F("AT+CGPS=0"), ok_reply))
-        return false;
-        // this takes a little time
-        readline(2000); // eat '+CGPS: 0'
-    } else {
-      if (! sendCheckReply(F("AT+CGPSPWR=0"), ok_reply))
-        return false;
-    }
-  }
-  return true;
-}
-
-boolean Adafruit_FONA::enableGPSSIM7000(boolean onoff) {
   if (onoff)
     return sendCheckReply(F("AT+CGNSPWR=1"), ok_reply);
   else
     return sendCheckReply(F("AT+CGNSPWR=0"), ok_reply);
 }
-
-/*
-boolean Adafruit_FONA_3G::enableGPS(boolean onoff) {
-  uint16_t state;
-
-  // first check if its already on or off
-  if (! Adafruit_FONA::sendParseReply(F("AT+CGPS?"), F("+CGPS: "), &state) )
-    return false;
-
-  if (onoff && !state) {
-    if (! sendCheckReply(F("AT+CGPS=1"), ok_reply))
-      return false;
-  } else if (!onoff && state) {
-    if (! sendCheckReply(F("AT+CGPS=0"), ok_reply))
-      return false;
-    // this takes a little time
-    readline(2000); // eat '+CGPS: 0'
-  }
-  return true;
-}
-*/
 
 int8_t Adafruit_FONA::GPSstatus(void) {
   if (_type == SIM808_V2 || SIM7000) {
@@ -1050,10 +971,13 @@ int8_t Adafruit_FONA::GPSstatusSIM7000(void) {
 
 }
 
-uint16_t Adafruit_FONA::getGPSSIM7000(uint8_t arg, char *buffer, uint16_t maxbuff) {
+uint16_t Adafruit_FONA::getGPS(uint8_t arg, char *buffer, uint16_t maxbuff) {
   int32_t x = arg;
 
-  getReply(F("AT+CGNSINF"));
+  if (_type == SIM7000)
+    getReply(F("AT+CGNSINF"));
+  else
+    getReply(F("AT+CGPSINFO"));
 
   char *p = prog_char_strstr(replybuffer, (prog_char*)F("SINF"));
   if (p == 0) {
@@ -1084,7 +1008,7 @@ boolean Adafruit_FONA::getGPS(float *lat, float *lon, float *speed_kph, float *h
   }
 	
   // grab the mode 2^5 gps csv from the sim808
-  uint8_t res_len = getGPSSIM7000(32, gpsbuffer, 120);
+  uint8_t res_len = getGPS(32, gpsbuffer, 120);
 
   // make sure we have a response
   if (res_len == 0)
@@ -1353,7 +1277,7 @@ boolean Adafruit_FONA::getGPS(float *lat, float *lon, float *speed_kph, float *h
       return false;
 
     // grab the mode 0 gps csv from the sim808
-    res_len = getGPSSIM7000(0, gpsbuffer, 120);
+    res_len = getGPS(0, gpsbuffer, 120);
 
     // make sure we have a response
     if (res_len == 0)
