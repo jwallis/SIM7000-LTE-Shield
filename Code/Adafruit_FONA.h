@@ -32,13 +32,9 @@
 #define SIM5320A 4
 #define SIM5320E 5
 
-#define SIM7000A 7
-#define SIM7000C 8
-#define SIM7000E 9
-#define SIM7000G 10
+#define SIM7000 7
 
-#define SIM7500A 11
-#define SIM7500E 12
+#define SIM7500 11
 
 #define SIM7600A 13
 #define SIM7600C 14
@@ -337,7 +333,7 @@ class Adafruit_FONA_3G : public Adafruit_FONA {
 class Adafruit_FONA_LTE : public Adafruit_FONA {
 
  public:
-  Adafruit_FONA_LTE () : Adafruit_FONA(FONA_NO_RST_PIN) { _type = SIM7000A; _type = SIM7500A;}
+  Adafruit_FONA_LTE () : Adafruit_FONA(FONA_NO_RST_PIN) {}
 
   boolean openWirelessConnection(bool onoff);
   boolean wirelessConnStatus(void);
