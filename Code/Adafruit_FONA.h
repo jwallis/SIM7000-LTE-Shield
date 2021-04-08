@@ -80,7 +80,6 @@ class Adafruit_FONA : public FONAStreamType {
  public:
   Adafruit_FONA(int8_t);
   boolean begin(FONAStreamType &port);
-  boolean beginSIM7000(FONAStreamType &port);
   uint8_t type();
 
   int freeRam(void);
@@ -138,9 +137,8 @@ class Adafruit_FONA : public FONAStreamType {
   uint8_t getSMSInterrupt(void);
   void setEchoOff(void);
   int8_t getNumSMS(void);
-  int8_t getNumSMSSIM7000(void);
   boolean readSMS(uint8_t i, char *smsbuff, uint16_t max, uint16_t *readsize);
-  boolean sendSMSSIM7000(const char *smsaddr, const char *smsmsg);
+  boolean sendSMS(const char *smsaddr, const char *smsmsg);
   boolean deleteSMS(uint8_t i);
   boolean deleteAllSMS();
   boolean getSMSSender(uint8_t i, char *sender, int senderlen);
@@ -169,7 +167,6 @@ class Adafruit_FONA : public FONAStreamType {
   // GPS handling
   boolean enableGPS(boolean onoff);
   int8_t GPSstatus(void);
-  int8_t GPSstatusSIM7000(void);
   uint16_t getGPS(uint8_t arg, char *buffer, uint16_t maxbuff);
   // boolean getGPS(float *lat, float *lon, float *speed_kph=0, float *heading=0, float *altitude=0);
   boolean getGPS(float *lat, float *lon, float *speed_kph, float *heading, float *altitude,

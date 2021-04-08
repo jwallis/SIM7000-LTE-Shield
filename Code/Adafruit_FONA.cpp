@@ -46,7 +46,7 @@ uint8_t Adafruit_FONA::type(void) {
 }
 
 
-boolean Adafruit_FONA::beginSIM7000(Stream &port) {
+boolean Adafruit_FONA::begin(Stream &port) {
   mySerial = &port;
 
   DEBUG_PRINTLN(F("Begin"));
@@ -590,19 +590,6 @@ int8_t Adafruit_FONA::getNumSMS(void) {
   uint16_t numsms;
 
   // ask how many sms are stored
-  if (sendParseReply(F("AT+CPMS?"), F(FONA_PREF_SMS_STORAGE ","), &numsms)) 
-    return numsms;
-  if (sendParseReply(F("AT+CPMS?"), F("\"SM\","), &numsms))
-    return numsms;
-  if (sendParseReply(F("AT+CPMS?"), F("\"SM_P\","), &numsms))
-    return numsms;
-  return -1;
-}
-
-int8_t Adafruit_FONA::getNumSMSSIM7000(void) {
-  uint16_t numsms;
-
-  // ask how many sms are stored
   if (sendParseReply(F("AT+CPMS?"), F("\"SM\","), &numsms))
     return numsms;
   return -1;
@@ -693,7 +680,7 @@ boolean Adafruit_FONA::getSMSSender(uint8_t i, char *sender, int senderlen) {
   return result;
 }
 
-boolean Adafruit_FONA::sendSMSSIM7000(const char *smsaddr, const char *smsmsg) {
+boolean Adafruit_FONA::sendSMS(const char *smsaddr, const char *smsmsg) {
   if (! sendCheckReply(F("AT+CMGF=1"), ok_reply)) return false;
 
   // AT+CMGS="+15127775555"
@@ -901,49 +888,6 @@ boolean Adafruit_FONA::enableGPS(boolean onoff) {
     return sendCheckReply(F("AT+CGNSPWR=0"), ok_reply);
 }
 
-int8_t Adafruit_FONA::GPSstatus(void) {
-  if (_type == SIM808_V2 || SIM7000) {
-    // 808 V2 uses GNS commands and doesn't have an explicit 2D/3D fix status.
-    // Instead just look for a fix and if found assume it's a 3D fix.
-    getReply(F("AT+CGNSINF"));
-    char *p = prog_char_strstr(replybuffer, (prog_char*)F("+CGNSINF: "));
-    if (p == 0) return -1;
-    p+=10;
-    readline(); // eat 'OK'
-    if (p[0] == '0') return 0; // GPS is not even on!
-
-    p+=2; // Skip to second value, fix status.
-    //DEBUG_PRINTLN(p);
-    // Assume if the fix status is '1' then we have a 3D fix, otherwise no fix.
-    if (p[0] == '1') return 3;
-    else return 1;
-  }
-  if (_type == SIM5320A || _type == SIM5320E) {
-    // FONA 3G doesn't have an explicit 2D/3D fix status.
-    // Instead just look for a fix and if found assume it's a 3D fix.
-    getReply(F("AT+CGPSINFO"));
-    char *p = prog_char_strstr(replybuffer, (prog_char*)F("+CGPSINFO:"));
-    if (p == 0) return -1;
-    if (p[10] != ',') return 3; // if you get anything, its 3D fix
-    return 0;
-  }
-  else {
-    // 808 V1 looks for specific 2D or 3D fix state.
-    getReply(F("AT+CGPSSTATUS?"));
-    char *p = prog_char_strstr(replybuffer, (prog_char*)F("SSTATUS: Location "));
-    if (p == 0) return -1;
-    p+=18;
-    readline(); // eat 'OK'
-    //DEBUG_PRINTLN(p);
-    if (p[0] == 'U') return 0;
-    if (p[0] == 'N') return 1;
-    if (p[0] == '2') return 2;
-    if (p[0] == '3') return 3;
-  }
-  // else
-  return 0;
-}
-
 void Adafruit_FONA::executeATCommand(char *command, char *buffer, uint16_t maxbuff) {
   // 65 seconds is the longest we can wait
   getReply(command, 65535);
@@ -953,9 +897,7 @@ void Adafruit_FONA::executeATCommand(char *command, char *buffer, uint16_t maxbu
   buffer[len] = 0;
 }
 
-int8_t Adafruit_FONA::GPSstatusSIM7000(void) {
-  // 808 V2 uses GNS commands and doesn't have an explicit 2D/3D fix status.
-  // Instead just look for a fix and if found assume it's a 3D fix.
+int8_t Adafruit_FONA::GPSstatus(void) {
   getReply(F("AT+CGNSINF"));
   char *p = prog_char_strstr(replybuffer, (prog_char*)F("+CGNSINF: "));
   if (p == 0) return -1;
