@@ -851,6 +851,20 @@ boolean Adafruit_FONA::getTime(char *buff, uint16_t maxlen) {
 
   readline(); // eat OK
 
+  // SIM7000 give you the local time, SIM7500 gives you the time in GMT!  That SUCKS!
+  // SIM7500: AT+CCLK?
+  //    "21/04/08,00:45:16-20"
+  if (_type == SIM7500) {
+    int8_t hour = ((buff[10]-'0') * 10) +  buff[11]-'0';
+    int8_t timezone_offset = ((buff[19]-'0') * 10) +  buff[20]-'0';
+    if (buff[18] == '-') {
+      timezone_offset = timezone_offset * -1;
+    }
+    hour = (hour + 24 + (timezone_offset / 4)) % 24;
+    buff[10] = hour / 10 + '0';
+    buff[11] = hour % 10 + '0';
+  }
+
   return true;
 }
 
