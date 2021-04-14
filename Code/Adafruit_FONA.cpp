@@ -705,7 +705,7 @@ boolean Adafruit_FONA::sendSMS(const char *smsaddr, const char *smsmsg) {
 
   readline(180000); // read the +CMGS reply, wait up to 3 minutes!!!
   //DEBUG_PRINT("Line 3: "); DEBUG_PRINTLN(strlen(replybuffer));
-  if (strstr(replybuffer, "+CMGS") == 0) {
+  if (prog_char_strstr(replybuffer, PSTR("+CMGS")) == 0) {
     return false;
   }
   readline(1000); // read OK
@@ -958,7 +958,7 @@ boolean Adafruit_FONA::getGPS(float *lat, float *lon, float *speed_kph, float *h
   char gpsbuffer[120];
 
   // we need at least a 2D fix
-  if (_type = SIM7000) { // SIM7500 doesn't support AT+CGPSSTATUS? command
+  if (_type == SIM7000) { // SIM7500 doesn't support AT+CGPSSTATUS? command
   	if (GPSstatus() < 2)
 	    return false;
   }
@@ -2405,7 +2405,7 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(FONAFlashStringPtr server, uint
 
   while (true) {
     if (! TCPconnect(server, port)) break;
-    if (! TCPsend(packet, len)) break;
+    if (! TCPsend(packet, len, server, port)) break;
 
     // TCPSend() handles the "SEND OK" part, but we need to verify it's SUCCESSFUL, ie. "[0,0]"
     // This is what makes this Hologram-specific, see https://hologram.io/docs/reference/cloud/embedded/
@@ -2426,49 +2426,60 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(FONAFlashStringPtr server, uint
 boolean Adafruit_FONA::TCPconnect(FONAFlashStringPtr server, uint16_t port) {
   flushInput();
 
-  // AT+CSTT="hologram"
-  if (! sendCheckReplyQuoted(F("AT+CSTT="), apn, ok_reply) ) return false;
+  if (_type == SIM7000) {
 
-  // close all old connections
-  if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000) ) return false;
+    // AT+CSTT="hologram"
+    if (! sendCheckReplyQuoted(F("AT+CSTT="), apn, ok_reply) ) return false;
 
-  // single connection at a time
-  if (! sendCheckReply(F("AT+CIPMUX=0"), ok_reply) ) return false;
+    // close all old connections
+    if (! sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"), 20000) ) return false;
 
-  // DO NOT manually read data - this is a change from the AdaFruit and Botletics libraries
-  // This is done so that after sending with TCPsend(), we will be returned all the responses and response codes.
-  // This is necessary for verifying from Hologram not just SEND OK, but the true success/fail message (success is "00")
-  if (! sendCheckReply(F("AT+CIPRXGET=0"), ok_reply) ) return false;
+    // single connection at a time
+    if (! sendCheckReply(F("AT+CIPMUX=0"), ok_reply) ) return false;
 
-  //example: AT+CIPSTART="TCP","cloudsocket.hologram.io","9999"
-  DEBUG_PRINT(F("AT+CIPSTART=\"TCP\",\""));
-  DEBUG_PRINT(server);
-  DEBUG_PRINT(F("\",\""));
-  DEBUG_PRINT(port);
-  DEBUG_PRINTLN(F("\""));
+    // DO NOT manually read data - this is a change from the AdaFruit and Botletics libraries
+    // This is done so that after sending with TCPsend(), we will be returned all the responses and response codes.
+    // This is necessary for verifying from Hologram not just SEND OK, but the true success/fail message (success is "00")
+    if (! sendCheckReply(F("AT+CIPRXGET=0"), ok_reply) ) return false;
 
-  delay(1000);
+    //example: AT+CIPSTART="TCP","cloudsocket.hologram.io","9999"
+    DEBUG_PRINT(F("AT+CIPSTART=\"TCP\",\""));
+    DEBUG_PRINT(server);
+    DEBUG_PRINT(F("\",\""));
+    DEBUG_PRINT(port);
+    DEBUG_PRINTLN(F("\""));
 
-  mySerial->print(F("AT+CIPSTART=\"TCP\",\""));
-  mySerial->print(server);
-  mySerial->print(F("\",\""));
-  mySerial->print(port);
-  mySerial->println(F("\""));
+    delay(1000);
 
-  if (! expectReply(ok_reply)) return false;
-  if (! expectReply(F("CONNECT OK"))) return false;
+    mySerial->print(F("AT+CIPSTART=\"TCP\",\""));
+    mySerial->print(server);
+    mySerial->print(F("\",\""));
+    mySerial->print(port);
+    mySerial->println(F("\""));
+
+    if (! expectReply(ok_reply)) return false;
+    if (! expectReply(F("CONNECT OK"))) return false;
+  }
+  else
+  {
+    if (! sendCheckReply(F("AT+CIPMODE=1"), ok_reply) ) return false;
+    sendCheckReply(F("AT+NETOPEN"), ok_reply);
+    expectReply(F("+NETOPEN: 0"), 10000);
+  }
 
   // looks like it was a success (?)
   return true;
 }
 
-boolean Adafruit_FONA::TCPclose(void) {
-  return sendCheckReply(F("AT+CIPCLOSE"), F("CLOSE OK"));
-}
-
 boolean Adafruit_FONA::TCPshut(void) {
-  TCPclose();
-  return sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"));
+  if (_type == SIM7000) {
+    sendCheckReply(F("AT+CIPCLOSE"), F("CLOSE OK"));
+    return sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"));
+  }
+  else
+  {
+    if (! sendCheckReply(F("AT+NETCLOSE"), ok_reply) ) return false;
+  }
 }
 
 boolean Adafruit_FONA::TCPconnected(void) {
@@ -2480,7 +2491,7 @@ boolean Adafruit_FONA::TCPconnected(void) {
   return (strcmp(replybuffer, "STATE: CONNECT OK") == 0);
 }
 
-boolean Adafruit_FONA::TCPsend(char *packet, uint8_t len) {
+boolean Adafruit_FONA::TCPsend(char *packet, uint8_t len, FONAFlashStringPtr server, uint16_t port) {
 
   DEBUG_PRINT(F("AT+CIPSEND="));
   DEBUG_PRINTLN(len);
@@ -2493,18 +2504,41 @@ boolean Adafruit_FONA::TCPsend(char *packet, uint8_t len) {
 #endif
   DEBUG_PRINTLN();
 
-  mySerial->print(F("AT+CIPSEND="));
-  mySerial->println(len);
-  readline();
+  if (_type == SIM7000) {
+    mySerial->print(F("AT+CIPSEND="));
+    mySerial->println(len);
 
-  DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+    readline();
+    DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
 
-  if (replybuffer[0] != '>') return false;
+    if (replybuffer[0] != '>') return false;
 
-  mySerial->write(packet, len);
+    mySerial->write(packet, len);
 
-  if (! expectReply(F("SEND OK"), 60000)) return false;
-  return true;
+    if (! expectReply(F("SEND OK"), 60000)) return false;
+    return true;
+  } else {
+    DEBUG_PRINT(F("AT+CIPOPEN=0,\"TCP\",\""));
+    DEBUG_PRINT(server);
+    DEBUG_PRINT(F("\","));
+    DEBUG_PRINTLN(port);
+
+    mySerial->print(F("AT+CIPOPEN=0,\"TCP\",\""));
+    mySerial->print(server);
+    mySerial->print(F("\","));
+    mySerial->println(port);
+
+    if (! expectReply(F("CONNECT 9600"), 4000)) return false;
+
+
+    // readline();
+    // DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
+
+    // if (prog_char_strstr(replybuffer, PSTR("CONN")) == 0) return false;
+
+    mySerial->write(packet, len);
+    return true;
+  }
 }
 
 uint16_t Adafruit_FONA::TCPavailable(void) {
