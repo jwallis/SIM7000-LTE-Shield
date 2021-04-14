@@ -896,10 +896,20 @@ boolean Adafruit_FONA::enableRTC(uint8_t i) {
 /********* GPS **********************************************************/
 
 boolean Adafruit_FONA::enableGPS(boolean onoff) {
-  if (onoff)
-    return sendCheckReply(F("AT+CGNSPWR=1"), ok_reply);
-  else
-    return sendCheckReply(F("AT+CGNSPWR=0"), ok_reply);
+  if (_type == SIM7000) {
+    if (onoff)
+      return sendCheckReply(F("AT+CGNSPWR=1"), ok_reply);
+    else
+      return sendCheckReply(F("AT+CGNSPWR=0"), ok_reply);
+  } else {
+    if (onoff)
+      return sendCheckReply(F("AT+CGPS=1"), ok_reply);
+    else {
+      sendCheckReply(F("AT+CGPS=0"), ok_reply);
+      delay(1000);
+      return sendCheckReply(F("AT+CGPSDEL"), ok_reply);
+    }
+  }
 }
 
 void Adafruit_FONA::executeATCommand(char *command, char *buffer, uint16_t maxbuff) {
@@ -912,19 +922,43 @@ void Adafruit_FONA::executeATCommand(char *command, char *buffer, uint16_t maxbu
 }
 
 int8_t Adafruit_FONA::GPSstatus(void) {
-  getReply(F("AT+CGNSINF"));
-  char *p = prog_char_strstr(replybuffer, (prog_char*)F("+CGNSINF: "));
+  char *p;
+  if (_type == SIM7000) {
+    getReply(F("AT+CGNSINF"));
+  } else {
+    getReply(F("AT+CGPS?"));    // is GPS even turned on?
+    p = prog_char_strstr(replybuffer, (prog_char*)F("CGPS"));
+
+    if (p == 0) return -1;
+    readline(); // eat 'OK'
+
+    p+=6;
+    if (p[0] == '0') return 0; // GPS is not even on!
+
+    getReply(F("AT+CGNSSINFO"));
+  }
+
+  p = prog_char_strstr(replybuffer, (prog_char*)F("SINF"));
   if (p == 0) return -1;
-  p+=10;
+
   readline(); // eat 'OK'
-  if (p[0] == '0') return 0; // GPS is not even on!
 
-  p+=2; // Skip to second value, fix status.
-  //DEBUG_PRINTLN(p);
-  // Assume if the fix status is '1' then we have a 3D fix, otherwise no fix.
-  if (p[0] == '1') return 3;
-  else return 1;
+  if (_type == SIM7000) {
+    p+=6;
 
+    if (p[0] == '0') return 0; // GPS is not even on!
+
+    p+=2; // Skip to second value, fix status.
+    //DEBUG_PRINTLN(p);
+    // Assume if the fix status is '1' then we have a 3D fix, otherwise no fix.
+    if (p[0] == '1') return 3;
+    else return 1;
+  } else {
+    p+=7;
+
+    if (p[0] == '2' || p[0] == '3') return 3; // GPS is not even on!
+    else return 1;
+  }
 }
 
 uint16_t Adafruit_FONA::getGPS(uint8_t arg, char *buffer, uint16_t maxbuff) {
@@ -933,7 +967,7 @@ uint16_t Adafruit_FONA::getGPS(uint8_t arg, char *buffer, uint16_t maxbuff) {
   if (_type == SIM7000)
     getReply(F("AT+CGNSINF"));
   else
-    getReply(F("AT+CGPSINFO"));
+    getReply(F("AT+CGNSSINFO"));
 
   char *p = prog_char_strstr(replybuffer, (prog_char*)F("SINF"));
   if (p == 0) {
@@ -941,7 +975,10 @@ uint16_t Adafruit_FONA::getGPS(uint8_t arg, char *buffer, uint16_t maxbuff) {
     return 0;
   }
 
-  p+=6;
+  if (_type == SIM7000)
+    p+=6;
+  else
+    p+=7;
 
   uint16_t len = min(maxbuff-1, (int)strlen(p));
   strncpy(buffer, p, len);
