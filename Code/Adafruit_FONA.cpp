@@ -797,10 +797,13 @@ boolean Adafruit_FONA::enableNetworkTimeSync(boolean onoff) {
 }
 */
 
-boolean Adafruit_FONA::enableNTPTimeSync(boolean onoff, char* timeZone, char *buff, uint16_t maxlen) {
+boolean Adafruit_FONA::enableNTPTimeSync(char* timeZone, char *buff, uint16_t maxlen) {
+  // tries to sync local clock with NTP (Network Time Protocol) time
+  // with SIM7000 - char* buff is set to the NTP time returned by AT+CNTP
+  // with SIM7500 - AT+CNTP just returns an int (success or error code)
   bool success = true;
 
-  if (onoff) {
+  if (_type == SIM7000) {
     sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"));
 
     if (! sendCheckReplyQuoted(F("AT+SAPBR=3,1,\"APN\","), apn, ok_reply, 10000))
@@ -808,20 +811,22 @@ boolean Adafruit_FONA::enableNTPTimeSync(boolean onoff, char* timeZone, char *bu
 
     sendCheckReply(F("AT+SAPBR=1,1"), ok_reply, 10000);
     sendCheckReply(F("AT+CNTPCID=1"), ok_reply);
+  }
 
-    // change "+08" -> "08" ... if there's a '-' it stays in.
-    if (timeZone[0] == '+') {
-      timeZone[0] = timeZone[1];
-      timeZone[1] = timeZone[2];
-      timeZone[2] = '\0';
-    }
+  // change "+08" -> "08" ... if there's a '-' it stays in.
+  if (timeZone[0] == '+') {
+    sendCheckReply(F("AT+CNTP=\"pool.ntp.org\","), &timeZone[1], ok_reply, 10000);
+  }
+  else {
     sendCheckReply(F("AT+CNTP=\"pool.ntp.org\","), timeZone, ok_reply, 10000);
+  }
 
-    if (! sendCheckReply(F("AT+CNTP"), ok_reply, 10000))
-      success = false;
+  if (! sendCheckReply(F("AT+CNTP"), ok_reply, 10000))
+    success = false;
 
-    readline(10000);
+  readline(10000);
 
+  if (_type == SIM7000){
     if (strncmp(replybuffer, "+CNTP: ", 7) != 0)
       return false;
 
@@ -831,9 +836,6 @@ boolean Adafruit_FONA::enableNTPTimeSync(boolean onoff, char* timeZone, char *bu
     buff[lentocopy] = 0;
 
     sendCheckReply(F("AT+SAPBR=0,1"), ok_reply, 10000);
-  } else {
-    if (! sendCheckReply(F("AT+CNTPCID=0"), ok_reply))
-      success = false;
   }
 
   return success;
@@ -869,6 +871,68 @@ boolean Adafruit_FONA::getTime(char *buff, uint16_t maxlen) {
 }
 
 boolean Adafruit_FONA::setTime(char *timeStr) {
+  // timeStr = "yy/MM/dd,hh:mm:ss±zz"
+
+  // SIM7500 has a very bizarre bug.  If timezone < 0, I have to do this weird workaround.
+  // Bug description:
+
+  // at+cclk="11/01/01,19:20:00-04"
+  // if tz is -04, whatever hour you set will be off by 9 hours.
+  // year/month/day are also messed up but we don't care.  min/sec are ok.
+
+  // example:  if you want to say 13:00 hours, tz -04
+  // you think you'd say
+  // -> at+cclk="11/01/01,13:00:00-04"
+
+  // but if you did this, you'd get
+  // -> at+cclk?
+  // -> +CCLK: "09/02/17,22:00:03-04"
+
+  // see?  off by 9 hours.  The number of hours "off" changes with the tz.
+  // below is a chart:
+  // tz       -4      -8      -12      -16    -20     -24     -28    -32     -36     -40     -44
+  // tz/4     -1      -2      -3       -4     -5      -6      -7     -8      -9      -10     -11
+  // off by    9       10      11       12     13      14      15     16      17      18      19
+
+  // so here's the formula.  h = desired hour of the day, z = desired timezone
+  // f(h,z)    = (24+h-(z/4+8))%24
+
+  // example 01:  if you want to say 13:00 hours, tz -04
+  // f(13,-04) = (24+13-(4/4+8))%24 = 4
+
+  // so we put in *4* for the hour:
+  // -> at+cclk="11/01/01,04:00:00-04"
+  // -> OK
+  // -> at+cclk?
+  // -> +CCLK: "09/02/17,13:00:02-04"
+
+  // example 02:  if you want to say 2:00 hours, tz = -28
+  // f(2,28)   = (24+2-(28/4+8))%24 = 11
+
+  // -> at+cclk="11/01/01,11:00:00-28"
+  // -> OK
+  // -> at+cclk?
+  // -> +CCLK: "09/02/18,02:00:01-28"
+  if (_type == SIM7500 and timeStr[18] == '-') {
+    char    hourStr[3];
+    uint8_t hourInt;
+    char    tzStr[3];
+    uint8_t tzInt;
+
+    hourStr[0] = timeStr[10];
+    hourStr[1] = timeStr[11];
+    hourStr[2] = 0;
+    hourInt    = atoi(hourStr);
+    tzStr[0]   = timeStr[19];
+    tzStr[1]   = timeStr[20];
+    tzStr[2]   = 0;
+    tzInt      = atoi(tzStr);
+
+    hourInt = (24+hourInt-(tzInt/4+8))%24;
+    timeStr[10] = hourInt / 10 + '0';
+    timeStr[11] = hourInt % 10 + '0';
+  }
+
   if (! sendCheckReply(F("AT+CCLK="), timeStr, ok_reply, 5000))
     return false;
 
