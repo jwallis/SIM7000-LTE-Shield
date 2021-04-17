@@ -872,6 +872,7 @@ boolean Adafruit_FONA::getTime(char *buff, uint16_t maxlen) {
 
 boolean Adafruit_FONA::setTime(char *timeStr) {
   // timeStr = "yy/MM/dd,hh:mm:ss±zz"
+  // GMT, not local
 
   // SIM7500 has a very bizarre bug.  If timezone < 0, I have to do this weird workaround.
   // Bug description:
@@ -2520,7 +2521,7 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(FONAFlashStringPtr server, uint
     break;
   }
 
-  TCPshut();
+  TCPshut(60000);
   return successCode;
 }
 
@@ -2572,14 +2573,15 @@ boolean Adafruit_FONA::TCPconnect(FONAFlashStringPtr server, uint16_t port) {
   return true;
 }
 
-boolean Adafruit_FONA::TCPshut(void) {
+boolean Adafruit_FONA::TCPshut(uint16_t timeout) {
   if (_type == SIM7000) {
     sendCheckReply(F("AT+CIPCLOSE"), F("CLOSE OK"));
     return sendCheckReply(F("AT+CIPSHUT"), F("SHUT OK"));
   }
   else
   {
-    if (! sendCheckReply(F("AT+NETCLOSE"), ok_reply) ) return false;
+    sendCheckReply(F("AT+NETCLOSE"), ok_reply);
+    expectReply(F("+NETCLOSE: 0"), timeout);
   }
 }
 

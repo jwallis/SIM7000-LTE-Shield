@@ -176,7 +176,7 @@ class Adafruit_FONA : public FONAStreamType {
   // TCP raw connections
   uint16_t ConnectAndSendToHologram(FONAFlashStringPtr server, uint16_t port, char *packet, uint16_t len);
   boolean TCPconnect(FONAFlashStringPtr server, uint16_t port);
-  boolean TCPshut(void);
+  boolean TCPshut(uint16_t timeout = 3000);
   boolean TCPconnected(void);
   boolean TCPsend(char *packet, uint8_t len, FONAFlashStringPtr server, uint16_t port);
   uint16_t TCPavailable(void);
