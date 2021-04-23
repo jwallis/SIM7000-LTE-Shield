@@ -2623,8 +2623,7 @@ boolean Adafruit_FONA::TCPsend(char *packet, uint8_t len, FONAFlashStringPtr ser
 
     mySerial->write(packet, len);
 
-    if (! expectReply(F("SEND OK"), 60000)) return false;
-    return true;
+    return expectReply(F("SEND OK"), 60000);
   } else {
     DEBUG_PRINT(F("AT+CIPOPEN=0,\"TCP\",\""));
     DEBUG_PRINT(server);
