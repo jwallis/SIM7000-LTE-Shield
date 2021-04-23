@@ -1648,6 +1648,11 @@ void Adafruit_FONA::setNetworkSettings(FONAFlashStringPtr apn,
   sendCheckReplyQuoted(F("AT+CGDCONT=1,\"IP\","), apn, ok_reply, 10000);
 }
 
+void Adafruit_FONA::setNetworkOperator(FONAFlashStringPtr oper) {
+  //oper will probably be "AT&T"
+  sendCheckReplyQuoted(F("AT+COPS=4,1,"), oper, ok_reply, 60000);
+}
+
 boolean Adafruit_FONA::getGSMLoc(uint16_t *errorcode, char *buff, uint16_t maxlen) {
 
   getReply(F("AT+CIPGSMLOC=1,1"), (uint16_t)10000);
