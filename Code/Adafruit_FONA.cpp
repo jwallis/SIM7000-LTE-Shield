@@ -60,6 +60,9 @@ boolean Adafruit_FONA::begin(Stream &port) {
     while (mySerial->available()) mySerial->read();
     if (sendCheckReply(F("AT"), F("AT"))) 
       break;
+    while (mySerial->available()) mySerial->read();
+    if (sendCheckReply(F("AT"), F("AR"))) 
+      break;
     delay(500);
     timeout-=500;
   }
@@ -1650,7 +1653,7 @@ void Adafruit_FONA::setNetworkSettings(FONAFlashStringPtr apn,
 
 void Adafruit_FONA::setNetworkOperator(FONAFlashStringPtr oper) {
   //oper will probably be "AT&T"
-  sendCheckReplyQuoted(F("AT+COPS=4,1,"), oper, ok_reply, 60000);
+  sendCheckReplyQuoted(F("AT+COPS=4,1,"), oper, ok_reply, 65500);
 }
 
 boolean Adafruit_FONA::getGSMLoc(uint16_t *errorcode, char *buff, uint16_t maxlen) {
