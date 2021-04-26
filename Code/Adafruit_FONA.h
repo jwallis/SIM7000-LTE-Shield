@@ -32,13 +32,9 @@
 #define SIM5320A 4
 #define SIM5320E 5
 
-#define SIM7000A 7
-#define SIM7000C 8
-#define SIM7000E 9
-#define SIM7000G 10
+#define SIM7000 7
 
-#define SIM7500A 11
-#define SIM7500E 12
+#define SIM7500 11
 
 #define SIM7600A 13
 #define SIM7600C 14
@@ -84,7 +80,6 @@ class Adafruit_FONA : public FONAStreamType {
  public:
   Adafruit_FONA(int8_t);
   boolean begin(FONAStreamType &port);
-  boolean beginSIM7000(FONAStreamType &port);
   uint8_t type();
 
   int freeRam(void);
@@ -117,7 +112,6 @@ class Adafruit_FONA : public FONAStreamType {
   uint8_t unlockSIM(char *pin);
   uint8_t getSIMCCID(char *ccid);
   uint8_t getNetworkStatus(void);
-  uint8_t getNetworkStatusSIM7000(void);
   uint8_t getRSSI(void);
 
   // IMEI
@@ -143,9 +137,8 @@ class Adafruit_FONA : public FONAStreamType {
   uint8_t getSMSInterrupt(void);
   void setEchoOff(void);
   int8_t getNumSMS(void);
-  int8_t getNumSMSSIM7000(void);
   boolean readSMS(uint8_t i, char *smsbuff, uint16_t max, uint16_t *readsize);
-  boolean sendSMSSIM7000(const char *smsaddr, const char *smsmsg);
+  boolean sendSMS(const char *smsaddr, const char *smsmsg);
   boolean deleteSMS(uint8_t i);
   boolean deleteAllSMS();
   boolean getSMSSender(uint8_t i, char *sender, int senderlen);
@@ -153,7 +146,7 @@ class Adafruit_FONA : public FONAStreamType {
 
   // Time
   // boolean enableNetworkTimeSync(boolean onoff);
-  boolean enableNTPTimeSync(boolean onoff, char *timeZone, char *buff, uint16_t maxlen);
+  boolean enableNTPTimeSync(char *timeZone, char *buff, uint16_t maxlen);
   boolean getTime(char *buff, uint16_t maxlen);
   boolean setTime(char *timeStr);
   
@@ -167,16 +160,15 @@ class Adafruit_FONA : public FONAStreamType {
   boolean getGSMLoc(uint16_t *replycode, char *buff, uint16_t maxlen);
   boolean getGSMLoc(float *lat, float *lon);
   void setNetworkSettings(FONAFlashStringPtr apn, FONAFlashStringPtr username=0, FONAFlashStringPtr password=0);
+  void setNetworkOperator(FONAFlashStringPtr oper);
   boolean postData(const char *request_type, const char *URL, const char *body = "", const char *token = "", uint32_t bodylen = 0);
   boolean postData(const char *server, uint16_t port, const char *connType, const char *URL, const char *body = "");
   void getNetworkInfo(void);
 
   // GPS handling
   boolean enableGPS(boolean onoff);
-  boolean enableGPSSIM7000(boolean onoff);
   int8_t GPSstatus(void);
-  int8_t GPSstatusSIM7000(void);
-  uint16_t getGPSSIM7000(uint8_t arg, char *buffer, uint16_t maxbuff);
+  uint16_t getGPS(uint8_t arg, char *buffer, uint16_t maxbuff);
   // boolean getGPS(float *lat, float *lon, float *speed_kph=0, float *heading=0, float *altitude=0);
   boolean getGPS(float *lat, float *lon, float *speed_kph, float *heading, float *altitude,
                               uint16_t *year = NULL, uint8_t *month = NULL, uint8_t *day = NULL, uint8_t *hour = NULL, uint8_t *min = NULL, float *sec = NULL);
@@ -185,10 +177,9 @@ class Adafruit_FONA : public FONAStreamType {
   // TCP raw connections
   uint16_t ConnectAndSendToHologram(FONAFlashStringPtr server, uint16_t port, char *packet, uint16_t len);
   boolean TCPconnect(FONAFlashStringPtr server, uint16_t port);
-  boolean TCPclose(void);
-  boolean TCPshut(void);
+  boolean TCPshut(uint16_t timeout = 3000);
   boolean TCPconnected(void);
-  boolean TCPsend(char *packet, uint8_t len);
+  boolean TCPsend(char *packet, uint8_t len, FONAFlashStringPtr server, uint16_t port);
   uint16_t TCPavailable(void);
   uint16_t TCPread(uint8_t *buff, uint8_t len);
 
@@ -337,7 +328,7 @@ class Adafruit_FONA_3G : public Adafruit_FONA {
 class Adafruit_FONA_LTE : public Adafruit_FONA {
 
  public:
-  Adafruit_FONA_LTE () : Adafruit_FONA(FONA_NO_RST_PIN) { _type = SIM7000A; _type = SIM7500A;}
+  Adafruit_FONA_LTE () : Adafruit_FONA(FONA_NO_RST_PIN) {}
 
   boolean openWirelessConnection(bool onoff);
   boolean wirelessConnStatus(void);
