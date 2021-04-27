@@ -2529,7 +2529,7 @@ uint16_t Adafruit_FONA::ConnectAndSendToHologram(FONAFlashStringPtr server, uint
     break;
   }
 
-  TCPshut(60000);
+  TCPshut(20000);
   return successCode;
 }
 
