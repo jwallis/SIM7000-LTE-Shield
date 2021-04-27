@@ -974,7 +974,7 @@ boolean Adafruit_FONA::enableGPS(boolean onoff) {
       return sendCheckReply(F("AT+CGPS=1"), ok_reply);
     else {
       sendCheckReply(F("AT+CGPS=0"), ok_reply);
-      delay(1000);
+      expectReply(F("+CGPS: 0"), 10000);
       return sendCheckReply(F("AT+CGPSDEL"), ok_reply);
     }
   }
