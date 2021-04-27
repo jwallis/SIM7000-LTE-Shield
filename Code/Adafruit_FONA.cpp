@@ -2604,16 +2604,16 @@ boolean Adafruit_FONA::TCPconnected(void) {
 
 boolean Adafruit_FONA::TCPsend(char *packet, uint8_t len, FONAFlashStringPtr server, uint16_t port) {
 
-  DEBUG_PRINT(F("AT+CIPSEND="));
+  DEBUG_PRINT(F("Sending: "));
   DEBUG_PRINTLN(len);
   DEBUG_PRINTLN(packet);
-#ifdef ADAFRUIT_FONA_DEBUG
-  for (uint16_t i=0; i<len; i++) {
-  DEBUG_PRINT(F(" 0x"));
-  DEBUG_PRINT(packet[i], HEX);
-  }
-#endif
-  DEBUG_PRINTLN();
+// #ifdef ADAFRUIT_FONA_DEBUG
+//   for (uint16_t i=0; i<len; i++) {
+//   DEBUG_PRINT(F(" 0x"));
+//   DEBUG_PRINT(packet[i], HEX);
+//   }
+// #endif
+//   DEBUG_PRINTLN();
 
   if (_type == SIM7000) {
     mySerial->print(F("AT+CIPSEND="));
@@ -2640,13 +2640,8 @@ boolean Adafruit_FONA::TCPsend(char *packet, uint8_t len, FONAFlashStringPtr ser
 
     if (! expectReply(F("CONNECT 9600"), 4000)) return false;
 
-
-    // readline();
-    // DEBUG_PRINT (F("\t<--- ")); DEBUG_PRINTLN(replybuffer);
-
-    // if (prog_char_strstr(replybuffer, PSTR("CONN")) == 0) return false;
-
     mySerial->write(packet, len);
+
     return true;
   }
 }
